@@ -44,6 +44,20 @@ http://localhost:8080/devices/ricoh/192.168.1.x
 
 ---
 
+### Descubrimiento de dispositivos en la red
+
+
+http://localhost:8080/discovery?subnet=192.168.1 
+
+Esta primera versión realiza un escaneo del rango de red indicado, buscando dispositivos con SNMP activo.
+
+Cuando un dispositivo responde correctamente, se consulta el OID estándar del **SNMPv2-MIB**:
+
+- `1.3.6.1.2.1.1.1.0` → sysDescr (descripción del sistema)
+
+El objetivo de esta fase es identificar equipos activos en la red y obtener información básica del sistema para su posterior clasificación (impresoras, PCs, switches, etc.).
+---
+
 ## Notas
 - Proyecto en fase inicial
 - Pensado para redes locales de oficina

@@ -5,7 +5,10 @@ import org.snmp4j.event.ResponseEvent;
 import org.snmp4j.mp.SnmpConstants;
 import org.snmp4j.smi.*;
 import org.snmp4j.transport.DefaultUdpTransportMapping;
+import org.springframework.stereotype.Component;
 
+
+@Component
 public class SnmpClient {
 
     private final Snmp snmp;
@@ -39,4 +42,9 @@ public class SnmpClient {
 
         return null;
     }
+
+	public String getSysDescr(String ip) throws Exception {
+		// TODO Auto-generated method stub
+		return get(ip, "1.3.6.1.2.1.1.1.0");
+	}
 }
