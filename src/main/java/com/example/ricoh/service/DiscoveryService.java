@@ -1,5 +1,6 @@
 package com.example.ricoh.service;
 
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -8,60 +9,108 @@ import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
 
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.example.ricoh.dto.DiscoveredDevice;
 import com.example.ricoh.snmp.SnmpClient;
 
-
-
 @Service
 public class DiscoveryService {
 
-    private final SnmpClient snmp;
-    
-    public DiscoveryService(SnmpClient snmp) {
-        this.snmp = snmp;
-    }
+	private final SnmpClient snmp;
 
-    public List<DiscoveredDevice> discover(String subnet) {
+	public DiscoveryService(SnmpClient snmp) {
+		this.snmp = snmp;
+	}
 
-        ExecutorService pool =
-                Executors.newVirtualThreadPerTaskExecutor();
+	/**
+	 * Discovery clásico.
+	 */
+	public List<DiscoveredDevice> discover(String subnet) {
 
-        List<CompletableFuture<DiscoveredDevice>> tasks =
-                IntStream.rangeClosed(1, 254)
-                        .mapToObj(i -> subnet + "." + i)
-                        .map(ip -> CompletableFuture.supplyAsync(
-                                () -> probe(ip),
-                                pool))
-                        .toList();
+		ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor();
 
-        List<DiscoveredDevice> result = tasks.stream()
-                .map(CompletableFuture::join)
-                .filter(Objects::nonNull)
-                .toList();
+		List<CompletableFuture<DiscoveredDevice>> tasks = IntStream.rangeClosed(1, 254).mapToObj(i -> subnet + "." + i)
+				.map(ip -> CompletableFuture.supplyAsync(() -> probe(ip), pool)).toList();
 
-        pool.shutdown();
-        return result;
-    }
+		List<DiscoveredDevice> result = tasks.stream().map(CompletableFuture::join).filter(Objects::nonNull).toList();
 
-    private DiscoveredDevice probe(String ip) {
+		pool.shutdown();
 
-        try {
-            String sys = snmp.getSysDescr(ip);
+		return result;
+	}
 
-            if (sys == null || sys.isBlank()) {
-                return null; // ❌ no SNMP
-            }
+	/**
+	 * Discovery mediante Server-Sent Events.
+	 */
+	public void discoverStream(String subnet, SseEmitter emitter) {
 
-            return new DiscoveredDevice(
-                    ip,
-                    sys,
-                    true
-            );
+		ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor();
 
-        } catch (Exception e) {
-            return null;
-        }
-    }
+		try {
+
+			emitter.send("ESCANEO INICIADO");
+
+			for (int i = 1; i <= 254; i++) {
+
+				final String ip = subnet + "." + i;
+
+				CompletableFuture.runAsync(() -> {
+
+					try {
+
+						emitter.send("[" + LocalTime.now() + "] sondeando " + ip);
+						String sys = snmp.getSysDescr(ip);
+
+						if (sys != null && !sys.isBlank()) {
+
+							emitter.send("ENCONTRADO : " + ip + " -> " + sys);
+						}
+
+					} catch (Exception e) {
+
+						// ignoramos timeouts
+
+					}
+
+				}, pool);
+			}
+
+			pool.shutdown();
+
+			while (!pool.isTerminated()) {
+				Thread.sleep(100);
+			}
+
+			emitter.send("ESCANEO COMPLETADO");
+
+			emitter.complete();
+
+		} catch (Exception e) {
+
+			emitter.completeWithError(e);
+		}
+	}
+
+	/**
+	 * Comprueba una IP.
+	 */
+	private DiscoveredDevice probe(String ip) {
+
+		try {
+
+			String sys = snmp.getSysDescr(ip);
+
+			if (sys == null || sys.isBlank()) {
+
+				return null;
+			}
+
+			return new DiscoveredDevice(ip, sys, true);
+
+		} catch (Exception e) {
+
+			return null;
+		}
+	}
 }
