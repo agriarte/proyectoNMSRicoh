@@ -2,6 +2,7 @@ package com.example.ricoh.service;
 
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -30,10 +31,14 @@ public class DiscoveryService {
 
 		ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor();
 
-		List<CompletableFuture<DiscoveredDevice>> tasks = IntStream.rangeClosed(1, 254).mapToObj(i -> subnet + "." + i)
+		List<CompletableFuture<DiscoveredDevice>> tasks = IntStream.rangeClosed(1, 254)
+				.mapToObj(i -> subnet + "." + i)
 				.map(ip -> CompletableFuture.supplyAsync(() -> probe(ip), pool)).toList();
 
-		List<DiscoveredDevice> result = tasks.stream().map(CompletableFuture::join).filter(Objects::nonNull).toList();
+		List<DiscoveredDevice> result = tasks.stream()
+				.map(CompletableFuture::join)
+				.filter(Objects::nonNull)
+				.toList();
 
 		pool.shutdown();
 
@@ -49,7 +54,12 @@ public class DiscoveryService {
 
 		try {
 
-			emitter.send("ESCANEO INICIADO");
+			emitter.send(
+			        Map.of(
+			                "event",
+			                "START"
+			        )
+			);
 
 			for (int i = 1; i <= 254; i++) {
 
@@ -59,14 +69,27 @@ public class DiscoveryService {
 
 					try {
 
-						emitter.send("[" + LocalTime.now() + "] sondeando " + ip);
+						emitter.send(
+						        Map.of(
+						                "event", "PROBING",
+						                "ip", ip,
+						                "time", LocalTime.now().toString()
+						        )
+						);
+						
 						String sys = snmp.getSysDescr(ip);
 
-						if (sys != null && !sys.isBlank()) {
+						if (sys != null &&
+						        !sys.isBlank()) {
 
-							emitter.send("ENCONTRADO : " + ip + " -> " + sys);
+						    emitter.send(
+						            Map.of(
+						                    "event", "FOUND",
+						                    "ip", ip,
+						                    "sysDescr", sys
+						            )
+						    );
 						}
-
 					} catch (Exception e) {
 
 						// ignoramos timeouts
@@ -82,7 +105,12 @@ public class DiscoveryService {
 				Thread.sleep(100);
 			}
 
-			emitter.send("ESCANEO COMPLETADO");
+			emitter.send(
+			        Map.of(
+			                "event",
+			                "COMPLETE"
+			        )
+			);
 
 			emitter.complete();
 

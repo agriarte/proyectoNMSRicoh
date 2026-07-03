@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>Ricoh NMS</title>
+
+<link
+href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
+rel="stylesheet">
+
+</head>
+
+<body class="container mt-4">
+
+<h2>Ricoh NMS - Discovery</h2>
+
+<div class="row mb-3">
+
+    <div class="col-3">
+
+        <input
+            type="text"
+            id="subnet"
+            class="form-control"
+            value="192.168.1">
+
+    </div>
+
+    <div class="col">
+
+        <button
+            class="btn btn-primary"
+            onclick="scan()">
+
+            Buscar dispositivos
+
+        </button>
+
+    </div>
+
+</div>
+
+<div
+    id="status"
+    class="alert alert-secondary">
+
+    Listo
+
+</div>
+
+<div class="progress mb-3">
+
+    <div
+        id="progress"
+        class="progress-bar
+               progress-bar-striped
+               progress-bar-animated"
+        style="width:0%">
+
+    </div>
+
+</div>
+
+<div class="card mb-3">
+
+    <div class="card-header">
+
+        Consola Discovery
+
+    </div>
+
+    <div
+        id="console"
+        class="card-body"
+        style="
+            height:250px;
+            overflow:auto;
+            font-family:monospace;">
+
+    </div>
+
+</div>
+
+<div class="card">
+
+    <div class="card-header">
+
+        Dispositivos encontrados
+
+    </div>
+
+    <div class="card-body">
+
+        <table
+            class="table
+                   table-striped
+                   table-hover">
+
+            <thead>
+
+            <tr>
+                <th>IP</th>
+                <th>Descripción</th>
+            </tr>
+
+            </thead>
+
+            <tbody id="devices">
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
