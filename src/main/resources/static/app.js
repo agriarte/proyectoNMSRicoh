@@ -1,3 +1,20 @@
+function log(consoleDiv, text) {
+
+    const line =
+        document.createElement(
+            "div");
+
+    line.textContent =
+        text;
+
+    consoleDiv.appendChild(
+        line);
+
+    consoleDiv.scrollTop =
+        consoleDiv.scrollHeight;
+}
+
+
 function scan() {
 
     const table =
@@ -16,13 +33,14 @@ function scan() {
         document.getElementById(
             "progress");
 
-    table.innerHTML = "";
-    consoleDiv.innerHTML = "";
+    // Limpiar resultados anteriores
+    table.replaceChildren();
+    consoleDiv.replaceChildren();
 
     status.className =
         "alert alert-info";
 
-    status.innerHTML =
+    status.textContent =
         "Escaneando red...";
 
     progress.style.width =
@@ -40,66 +58,73 @@ function scan() {
     source.onmessage =
         function(event) {
 
+            // Consola de depuración
+            console.log(
+                performance.now(),
+                event.data);
+
             const data =
                 JSON.parse(
                     event.data);
 
-            if(data.event ===
+            // Inicio
+            if (data.event ===
                     "START") {
 
-                consoleDiv.innerHTML +=
-                    "=== ESCANEO INICIADO ===<br>";
+                log(
+                    consoleDiv,
+                    "=== ESCANEO INICIADO ===");
             }
 
-            if(data.event ===
+            // Sondeo
+            if (data.event ===
                     "PROBING") {
 
-                consoleDiv.innerHTML +=
-
+                log(
+                    consoleDiv,
                     "🔍 "
                     + data.time
                     + " "
-                    + data.ip
-                    + "<br>";
-
-                consoleDiv.scrollTop =
-                    consoleDiv.scrollHeight;
+                    + data.ip);
             }
 
-            if(data.event ===
+            // Dispositivo encontrado
+            if (data.event ===
                     "FOUND") {
 
-                consoleDiv.innerHTML +=
-
+                log(
+                    consoleDiv,
                     "🟢 "
-                    + data.ip
-                    + "<br>";
+                    + data.ip);
 
                 const row =
                     table.insertRow();
 
                 row.insertCell(0)
-                    .innerHTML =
-                    data.ip;
+                   .textContent =
+                   data.ip;
 
                 row.insertCell(1)
-                    .innerHTML =
-                    data.sysDescr;
-
-                consoleDiv.scrollTop =
-                    consoleDiv.scrollHeight;
+                   .textContent =
+                   data.sysDescr;
             }
 
-            if(data.event ===
+            // Fin del escaneo
+            if (data.event ===
                     "COMPLETE") {
 
-                consoleDiv.innerHTML +=
-                    "<br>=== ESCANEO FINALIZADO ===";
+                log(
+                    consoleDiv,
+                    "");
+
+                log(
+                    consoleDiv,
+                    "=== ESCANEO FINALIZADO ===");
 
                 status.className =
                     "alert alert-success";
 
-                status.innerHTML =
+                status.textContent =
                     "Escaneo completado";
 
                 progress.style.width =
@@ -118,7 +143,7 @@ function scan() {
             status.className =
                 "alert alert-danger";
 
-            status.innerHTML =
+            status.textContent =
                 "Error";
 
             source.close();

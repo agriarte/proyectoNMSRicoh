@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import org.springframework.stereotype.Service;
@@ -24,121 +25,109 @@ public class DiscoveryService {
 		this.snmp = snmp;
 	}
 
-	/**
-	 * Discovery clásico.
-	 */
-	public List<DiscoveredDevice> discover(String subnet) {
-
-		ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor();
-
-		List<CompletableFuture<DiscoveredDevice>> tasks = IntStream.rangeClosed(1, 254)
-				.mapToObj(i -> subnet + "." + i)
-				.map(ip -> CompletableFuture.supplyAsync(() -> probe(ip), pool)).toList();
-
-		List<DiscoveredDevice> result = tasks.stream()
-				.map(CompletableFuture::join)
-				.filter(Objects::nonNull)
-				.toList();
-
-		pool.shutdown();
-
-		return result;
-	}
+//	/**
+//	 * Discovery clásico.
+//	 */
+//	public List<DiscoveredDevice> discover(String subnet) {
+//
+//		ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor();
+//
+//		List<CompletableFuture<DiscoveredDevice>> tasks = IntStream.rangeClosed(1, 254)
+//				.mapToObj(i -> subnet + "." + i)
+//				.map(ip -> CompletableFuture.supplyAsync(() -> probe(ip), pool)).toList();
+//
+//		List<DiscoveredDevice> result = tasks.stream()
+//				.map(CompletableFuture::join)
+//				.filter(Objects::nonNull)
+//				.toList();
+//
+//		pool.shutdown();
+//
+//		return result;
+//	}
 
 	/**
 	 * Discovery mediante Server-Sent Events.
 	 */
-	public void discoverStream(String subnet, SseEmitter emitter) {
+	public void discoverStream(
+	        String subnet,
+	        SseEmitter emitter) {
 
-		ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor();
+	    ExecutorService pool =
+	        Executors.newVirtualThreadPerTaskExecutor();
 
-		try {
+	    try {
 
-			emitter.send(
-			        Map.of(
-			                "event",
-			                "START"
-			        )
-			);
+	        synchronized(emitter) {
+	            emitter.send(
+	                Map.of(
+	                    "event",
+	                    "START"));
+	        }
 
-			for (int i = 1; i <= 254; i++) {
+	        for(int i=1;i<=254;i++) {
 
-				final String ip = subnet + "." + i;
+	            String ip =
+	                subnet + "." + i;
 
-				CompletableFuture.runAsync(() -> {
+	            CompletableFuture.runAsync(
+	                () -> {
 
-					try {
+	                    try {
 
-						emitter.send(
-						        Map.of(
-						                "event", "PROBING",
-						                "ip", ip,
-						                "time", LocalTime.now().toString()
-						        )
-						);
-						
-						String sys = snmp.getSysDescr(ip);
+	                        synchronized(emitter) {
+	                            emitter.send(
+	                                Map.of(
+	                                    "event",
+	                                    "PROBING",
+	                                    "ip", ip,
+	                                    "time",
+	                                    LocalTime.now()
+	                                ));
+	                        }
 
-						if (sys != null &&
-						        !sys.isBlank()) {
+	                        String sys =
+	                            snmp.getSysDescr(ip);
 
-						    emitter.send(
-						            Map.of(
-						                    "event", "FOUND",
-						                    "ip", ip,
-						                    "sysDescr", sys
-						            )
-						    );
-						}
-					} catch (Exception e) {
+	                        if(sys != null &&
+	                           !sys.isBlank()) {
 
-						// ignoramos timeouts
+	                            synchronized(emitter) {
+	                                emitter.send(
+	                                    Map.of(
+	                                        "event",
+	                                        "FOUND",
+	                                        "ip", ip,
+	                                        "sysDescr", sys
+	                                    ));
+	                            }
+	                        }
 
-					}
+	                    } catch(Exception e) {
 
-				}, pool);
-			}
+	                    }
 
-			pool.shutdown();
+	                },
+	                pool);
+	        }
 
-			while (!pool.isTerminated()) {
-				Thread.sleep(100);
-			}
+	        pool.shutdown();
+	        pool.awaitTermination(
+	                10,
+	                TimeUnit.MINUTES);
 
-			emitter.send(
-			        Map.of(
-			                "event",
-			                "COMPLETE"
-			        )
-			);
+	        synchronized(emitter) {
+	            emitter.send(
+	                Map.of(
+	                    "event",
+	                    "COMPLETE"));
+	        }
 
-			emitter.complete();
+	        emitter.complete();
 
-		} catch (Exception e) {
+	    } catch(Exception e) {
 
-			emitter.completeWithError(e);
-		}
-	}
-
-	/**
-	 * Comprueba una IP.
-	 */
-	private DiscoveredDevice probe(String ip) {
-
-		try {
-
-			String sys = snmp.getSysDescr(ip);
-
-			if (sys == null || sys.isBlank()) {
-
-				return null;
-			}
-
-			return new DiscoveredDevice(ip, sys, true);
-
-		} catch (Exception e) {
-
-			return null;
-		}
+	        emitter.completeWithError(e);
+	    }
 	}
 }

@@ -27,10 +27,10 @@ public class DiscoveryController {
 	 *
 	 * Devuelve todos los dispositivos encontrados cuando termina el escaneo.
 	 */
-	@GetMapping
-	public List<DiscoveredDevice> scan(@RequestParam String subnet) {
-		return discoveryService.discover(subnet);
-	}
+//	@GetMapping
+//	public List<DiscoveredDevice> scan(@RequestParam String subnet) {
+//		return discoveryService.discover(subnet);
+//	}
 
 	/**
 	 * Endpoint SSE.
@@ -38,12 +38,18 @@ public class DiscoveryController {
 	 * Va enviando eventos según se descubren.
 	 */
 	@GetMapping("/stream")
-	public SseEmitter stream(@RequestParam String subnet) {
+	public SseEmitter stream(
+	        @RequestParam String subnet) {
 
-		SseEmitter emitter = new SseEmitter(0L);
+	    SseEmitter emitter =
+	        new SseEmitter(0L);
 
-		discoveryService.discoverStream(subnet, emitter);
+	    Thread.startVirtualThread(() ->
+	        discoveryService
+	            .discoverStream(
+	                subnet,
+	                emitter));
 
-		return emitter;
+	    return emitter;
 	}
 }
