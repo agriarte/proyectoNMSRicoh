@@ -26,28 +26,56 @@ public class DiscoveryService {
 	}
 
 //	/**
-//	 * Discovery clásico.
+//	 * Discovery clásico. 
 //	 */
-//	public List<DiscoveredDevice> discover(String subnet) {
-//
-//		ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor();
-//
-//		List<CompletableFuture<DiscoveredDevice>> tasks = IntStream.rangeClosed(1, 254)
-//				.mapToObj(i -> subnet + "." + i)
-//				.map(ip -> CompletableFuture.supplyAsync(() -> probe(ip), pool)).toList();
-//
-//		List<DiscoveredDevice> result = tasks.stream()
-//				.map(CompletableFuture::join)
-//				.filter(Objects::nonNull)
-//				.toList();
-//
-//		pool.shutdown();
-//
-//		return result;
-//	}
+	public List<DiscoveredDevice> discover(String subnet) {
+
+		ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor();
+
+		List<CompletableFuture<DiscoveredDevice>> tasks = IntStream.rangeClosed(1, 254)
+				.mapToObj(i -> subnet + "." + i)
+				.map(ip -> CompletableFuture.supplyAsync(() -> probe(ip), pool)).toList();
+
+		List<DiscoveredDevice> result = tasks.stream()
+				.map(CompletableFuture::join)
+				.filter(Objects::nonNull)
+				.toList();
+
+		pool.shutdown();
+
+		return result;
+	}
+	
+	/**
+	* Comprueba una IP. Se utiliza únicamente por discover en modo clásico, antes de aplicar las correcciones.
+	* De esta forma, el log y los resultados se muestran de una sola vez. En la siguiente versión, los datos
+	* se mostrarán a medida que vayan llegando.
+	***/
+
+	private DiscoveredDevice probe(String ip) {
+
+		try {
+
+			String sys = snmp.getSysDescr(ip);
+
+			if (sys == null || sys.isBlank()) {
+
+				return null;
+			}
+
+			return new DiscoveredDevice(ip, sys, true);
+
+		} catch (Exception e) {
+
+			return null;
+		}
+	}
+	
+	
+	
 
 	/**
-	 * Discovery mediante Server-Sent Events.
+	 * Discovery mediante Server-Sent Events. 
 	 */
 	public void discoverStream(
 	        String subnet,

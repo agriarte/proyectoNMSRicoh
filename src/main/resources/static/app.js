@@ -66,71 +66,36 @@ function scan() {
             const data =
                 JSON.parse(
                     event.data);
+					
 
-            // Inicio
-            if (data.event ===
-                    "START") {
+            switch (data.event) {
 
-                log(
-                    consoleDiv,
-                    "=== ESCANEO INICIADO ===");
-            }
+                case "START":
+                    log(consoleDiv, "=== ESCANEO INICIADO ===");
+                    break;
 
-            // Sondeo
-            if (data.event ===
-                    "PROBING") {
+                case "PROBING":
+                    log(consoleDiv, `🔍 ${data.time} ${data.ip}`);
+                    break;
 
-                log(
-                    consoleDiv,
-                    "🔍 "
-                    + data.time
-                    + " "
-                    + data.ip);
-            }
+                case "FOUND":
+                    log(consoleDiv, `🟢 ${data.ip}`);
 
-            // Dispositivo encontrado
-            if (data.event ===
-                    "FOUND") {
+                    const row = table.insertRow();
+                    row.insertCell(0).textContent = data.ip;
+                    row.insertCell(1).textContent = data.sysDescr;
+                    break;
 
-                log(
-                    consoleDiv,
-                    "🟢 "
-                    + data.ip);
+                case "COMPLETE":
+                    log(consoleDiv, "");
+                    log(consoleDiv, "=== ESCANEO FINALIZADO ===");
 
-                const row =
-                    table.insertRow();
+                    status.FlassName = "alert alert-success";
+                    status.textContent = "Escaneo completado";
+                    progress.style.width = "0%";
 
-                row.insertCell(0)
-                   .textContent =
-                   data.ip;
-
-                row.insertCell(1)
-                   .textContent =
-                   data.sysDescr;
-            }
-
-            // Fin del escaneo
-            if (data.event ===
-                    "COMPLETE") {
-
-                log(
-                    consoleDiv,
-                    "");
-
-                log(
-                    consoleDiv,
-                    "=== ESCANEO FINALIZADO ===");
-
-                status.className =
-                    "alert alert-success";
-
-                status.textContent =
-                    "Escaneo completado";
-
-                progress.style.width =
-                    "0%";
-
-                source.close();
+                    source.close();
+                    break;
             }
         };
 

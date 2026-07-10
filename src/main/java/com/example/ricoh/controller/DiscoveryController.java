@@ -27,10 +27,10 @@ public class DiscoveryController {
 	 *
 	 * Devuelve todos los dispositivos encontrados cuando termina el escaneo.
 	 */
-//	@GetMapping
-//	public List<DiscoveredDevice> scan(@RequestParam String subnet) {
-//		return discoveryService.discover(subnet);
-//	}
+	@GetMapping
+	public List<DiscoveredDevice> scan(@RequestParam String subnet) {
+		return discoveryService.discover(subnet);
+	}
 
 	/**
 	 * Endpoint SSE.
